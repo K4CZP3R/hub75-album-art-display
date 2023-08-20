@@ -10,7 +10,6 @@ public:
     SerialRecv();
     ~SerialRecv();
 
-    void setup();
     void loop(byte (*externalFunction)(byte *buf, int length));
     void sendMessageByte(byte type, byte val);
     void sendMessageWord(byte type, uint16_t val);
