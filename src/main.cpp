@@ -28,8 +28,35 @@ enum ReadingState
 
 ReadingState currentState = WAITING;
 
+AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
+
+void wsSendMessage1(byte type, byte val)
+{
+    // byte buffer[] = {startMagic[0], startMagic[1], 0x5, type, val, endMagic[0], endMagic[1]};
+    // ws.binaryAll(buffer, sizeof(buffer));
+}
+
+void wsSendMessage4(byte type, uint32_t val)
+{
+    // // Split val into 4 bytes
+    // byte buffer[] = {startMagic[0],
+    //                  startMagic[1],
+    //                  0x8,
+    //                  type,
+    //                  (byte)(val >> 24),
+    //                  (byte)(val >> 16),
+    //                  (byte)(val >> 8),
+    //                  (byte)(val),
+    //                  endMagic[0],
+    //                  endMagic[1]};
+    // ws.binaryAll(buffer, sizeof(buffer));
+    // delete[] buffer;
+}
+
 void sendMessage4(byte type, uint32_t val)
 {
+    wsSendMessage4(type, val);
     Serial.write(startMagic, START_MAGIC_SIZE);
     Serial.write(0x5); // message length
     Serial.write(type);
@@ -45,35 +72,16 @@ void sendMessage1(byte type, byte val)
     Serial.write(endMagic, END_MAGIC_SIZE);
 }
 
-void screen_setup()
-{
-
-    HUB75_I2S_CFG mxconfig(
-        PANEL_RES_X, // module width
-        PANEL_RES_Y, // module height
-        PANEL_CHAIN  // chain length
-    );
-
-    dma_display = new MatrixPanel_I2S_DMA(mxconfig);
-    dma_display->setBrightness8(192);
-
-    if (not dma_display->begin())
-        sendMessage1(0xf0, 0x1);
-
-    // create VirtualDisplay object based on our newly created dma_display object
-    virt_display = new VirtualMatrixPanel((*dma_display), NUM_ROWS, NUM_COLS, PANEL_RES_X, PANEL_RES_Y, VIRTUAL_MATRIX_CHAIN_TYPE);
-    // So far so good, so continue
-    virt_display->fillScreen(virt_display->color444(0, 0, 0));
-}
-
-void setup()
-{
-    Serial.begin(BAUD_RATE);
-    screen_setup();
-}
-
 byte handleMessage(byte *buffer, int length)
 {
+    // Print message
+    Serial.print("Message: ");
+    Serial.printf("Length is %d\n", length);
+    for (int i = 0; i < length; i++)
+    {
+        Serial.printf("%02x ", buffer[i]);
+    }
+    Serial.println();
     byte functionType = buffer[0];
 
     if (functionType == 0x01)
@@ -124,6 +132,7 @@ byte handleMessage(byte *buffer, int length)
         if (rgbBitmap != NULL)
         {
             delete[] rgbBitmap;
+            rgbBitmap = NULL;
         }
 
         sendMessage4(0x70, ESP.getFreeHeap());
@@ -159,14 +168,109 @@ byte handleMessage(byte *buffer, int length)
 
         virt_display->drawRGBBitmap(startX, startY, rgbBitmap, rgbBitmapWidth, rgbBitmapHeight);
 
-        // delete[] rgbBitmap;
+        delete[] rgbBitmap;
+        rgbBitmap = NULL;
     }
 
     return 0x0;
 }
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
+{
+    AwsFrameInfo *info = (AwsFrameInfo *)arg;
+    if (info->final && info->index == 0 && info->len == len && info->opcode == WS_BINARY)
+    {
+        data[len] = 0; // null terminate data
+
+        Serial.printf("Received %u bytes of binary data\n", len);
+        for (size_t i = 0; i < len; i++)
+        {
+            Serial.printf("%02x ", data[i]);
+        }
+        Serial.println();
+
+        if (data[0] != startMagic[0] || data[1] != startMagic[1] || data[len - 2] != endMagic[0] || data[len - 1] != endMagic[1])
+        {
+            Serial.println("Invalid message");
+            return;
+        }
+        byte ret = handleMessage(data + START_MAGIC_SIZE + 1, len - MESSAGE_OVERHEAD);
+        wsSendMessage1(0xff, ret);
+    }
+}
+
+void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
+{
+    switch (type)
+    {
+    case WS_EVT_CONNECT:
+        Serial.printf("ws[%s][%u] connect\n", server->url(), client->id());
+        break;
+    case WS_EVT_DISCONNECT:
+        Serial.printf("ws[%s][%u] disconnect: %u\n", server->url(), client->id());
+        break;
+    case WS_EVT_DATA:
+        handleWebSocketMessage(arg, data, len);
+        break;
+    case WS_EVT_PONG:
+    case WS_EVT_ERROR:
+        break;
+    }
+
+    Serial.printf("Free heap: %d\n", ESP.getFreeHeap());
+}
+
+void initWebSocket()
+{
+    ws.onEvent(onEvent);
+    server.addHandler(&ws);
+}
+
+void screen_setup()
+{
+
+    HUB75_I2S_CFG mxconfig(
+        PANEL_RES_X, // module width
+        PANEL_RES_Y, // module height
+        PANEL_CHAIN  // chain length
+    );
+
+    dma_display = new MatrixPanel_I2S_DMA(mxconfig);
+    dma_display->setBrightness8(192);
+
+    if (not dma_display->begin())
+        sendMessage1(0xf0, 0x1);
+
+    // create VirtualDisplay object based on our newly created dma_display object
+    virt_display = new VirtualMatrixPanel((*dma_display), NUM_ROWS, NUM_COLS, PANEL_RES_X, PANEL_RES_Y, VIRTUAL_MATRIX_CHAIN_TYPE);
+    // So far so good, so continue
+    virt_display->fillScreen(virt_display->color444(0, 0, 0));
+}
+
+void ws_setup()
+{
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        delay(1000);
+        Serial.println("Connecting to WiFi..");
+    }
+    Serial.println(WiFi.localIP());
+
+    initWebSocket();
+
+    server.begin();
+}
+
+void setup()
+{
+    Serial.begin(BAUD_RATE);
+    ws_setup();
+    screen_setup();
+}
 
 void loop()
 {
+    ws.cleanupClients();
     while (Serial.available())
     {
         byte incomingByte = Serial.read();
@@ -197,6 +301,7 @@ void loop()
                 if (msgBuffer != NULL)
                 {
                     delete[] msgBuffer;
+                    msgBuffer = NULL;
                 }
 
                 msgBuffer = new byte[expectedMessageLen];

@@ -12,3 +12,10 @@
 #define VIRTUAL_MATRIX_CHAIN_TYPE CHAIN_BOTTOM_LEFT_UP
 #define SCREEN_WIDTH 32
 #define SCREEN_HEIGHT 32
+
+#include <WiFi.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+
+#define WIFI_SSID "PanicAtTheCiscoEXT"
+#define WIFI_PASS "aQkkVzctkrj6"
