@@ -48,7 +48,7 @@ void Socket::handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         }
 
         byte ret = this->externalFunction(data + Packet::START_MAGIC_SIZE + 1, len - Packet::MESSAGE_OVERHEAD);
-        // wsSendMessage1(0xff, ret);
+        sendMessageByte(0xff, ret);
     }
 }
 
@@ -69,4 +69,15 @@ void Socket::onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEv
     case WS_EVT_ERROR:
         break;
     }
+}
+
+void Socket::sendMessageByte(byte type, byte val)
+{
+    byte buffer[] = {Packet::startMagic[0], Packet::startMagic[1], 0x2, type, val, Packet::endMagic[0], Packet::endMagic[1]};
+    ws->binaryAll((char *)buffer, sizeof(buffer));
+}
+void Socket::sendMessageWord(byte type, uint16_t val)
+{
+    byte buffer[] = {Packet::startMagic[0], Packet::startMagic[1], 0x5, type, (byte)(val >> 8), (byte)(val), Packet::endMagic[0], Packet::endMagic[1]};
+    ws->binaryAll((char *)buffer, sizeof(buffer));
 }
