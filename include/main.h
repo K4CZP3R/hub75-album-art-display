@@ -2,6 +2,8 @@
 #include <ESP32-VirtualMatrixPanel-I2S-DMA.h>
 #include <FastLED.h>
 
+// #define USE_WS 1
+
 #define BAUD_RATE 115200 // serial debug port baud rate
 
 #define PANEL_RES_X 32                 // Number of pixels wide of each INDIVIDUAL panel module.
@@ -13,9 +15,11 @@
 #define SCREEN_WIDTH 32
 #define SCREEN_HEIGHT 32
 
+#ifdef USE_WS
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 
 #define WIFI_SSID "PanicAtTheCiscoEXT"
 #define WIFI_PASS "aQkkVzctkrj6"
+#endif

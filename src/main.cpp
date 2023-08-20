@@ -28,6 +28,8 @@ enum ReadingState
 
 ReadingState currentState = WAITING;
 
+#ifdef USE_WS
+
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
@@ -54,9 +56,13 @@ void wsSendMessage4(byte type, uint32_t val)
     // delete[] buffer;
 }
 
+#endif
+
 void sendMessage4(byte type, uint32_t val)
 {
+#ifdef USE_WS
     wsSendMessage4(type, val);
+#endif
     Serial.write(startMagic, START_MAGIC_SIZE);
     Serial.write(0x5); // message length
     Serial.write(type);
@@ -65,6 +71,9 @@ void sendMessage4(byte type, uint32_t val)
 }
 void sendMessage1(byte type, byte val)
 {
+#ifdef USE_WS
+    wsSendMessage1(type, val);
+#endif
     Serial.write(startMagic, START_MAGIC_SIZE);
     Serial.write(0x2); // message length
     Serial.write(type);
@@ -74,14 +83,6 @@ void sendMessage1(byte type, byte val)
 
 byte handleMessage(byte *buffer, int length)
 {
-    // Print message
-    Serial.print("Message: ");
-    Serial.printf("Length is %d\n", length);
-    for (int i = 0; i < length; i++)
-    {
-        Serial.printf("%02x ", buffer[i]);
-    }
-    Serial.println();
     byte functionType = buffer[0];
 
     if (functionType == 0x01)
@@ -174,6 +175,9 @@ byte handleMessage(byte *buffer, int length)
 
     return 0x0;
 }
+
+#ifdef USE_WS
+
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
 {
     AwsFrameInfo *info = (AwsFrameInfo *)arg;
@@ -225,6 +229,8 @@ void initWebSocket()
     server.addHandler(&ws);
 }
 
+#endif
+
 void screen_setup()
 {
 
@@ -246,6 +252,7 @@ void screen_setup()
     virt_display->fillScreen(virt_display->color444(0, 0, 0));
 }
 
+#ifdef USE_WS
 void ws_setup()
 {
     WiFi.begin(WIFI_SSID, WIFI_PASS);
@@ -260,17 +267,22 @@ void ws_setup()
 
     server.begin();
 }
+#endif
 
 void setup()
 {
     Serial.begin(BAUD_RATE);
+#ifdef USE_WS
     ws_setup();
+#endif
     screen_setup();
 }
 
 void loop()
 {
+#ifdef USE_WS
     ws.cleanupClients();
+#endif
     while (Serial.available())
     {
         byte incomingByte = Serial.read();
