@@ -6,6 +6,7 @@
 #include <ESPAsyncWebServer.h>
 
 #include "packet.h"
+#include "CircularBuffer.h"
 
 class Socket
 {
@@ -25,6 +26,14 @@ private:
     AsyncWebServer *server = NULL;
     AsyncWebSocket *ws = NULL;
     byte (*externalFunction)(byte *buf, int length);
+
+    struct WebsocketRequest
+    {
+        uint8_t *data;
+        size_t len;
+    };
+
+    CircularBuffer<WebsocketRequest *, 300> wsRequests;
 };
 
 #endif
