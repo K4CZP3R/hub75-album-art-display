@@ -7,7 +7,6 @@ Wireless *wireless = nullptr;
 Socket *socket = nullptr;
 Ota *ota = nullptr;
 NtpTime *ntpTime = nullptr;
-static unsigned long lastMsgTime = millis();
 
 void setup()
 {
@@ -84,9 +83,7 @@ void setup()
 
     socket = new Socket();
     socket->setup([](byte *buf, int length) -> byte
-                  { 
-                    lastMsgTime = millis();
-                    return coverArt->handleMessage(buf, length); });
+                  { return coverArt->handleMessage(buf, length); });
 #endif
 }
 
@@ -95,24 +92,5 @@ void loop()
     ota->loop();
     socket->loop();
     serialRecv->loop([](byte *buf, int length) -> byte
-                     { 
-                        lastMsgTime = millis();
-                        return coverArt->handleMessage(buf, length); });
-
-    if (millis() - lastMsgTime > 30000)
-    {
-
-        int hour, minute;
-        ntpTime->getHourAndMinutes(hour, minute);
-
-        if (matrix != nullptr)
-        {
-            matrix->getVirtDisplay()->clearScreen();
-            matrix->getVirtDisplay()->setCursor(0, 0);
-            matrix->getVirtDisplay()->printf("%02d:%02d", hour, minute);
-            matrix->getDmaDisplay()->setBrightness(64);
-        }
-
-        lastMsgTime = millis();
-    }
+                     { return coverArt->handleMessage(buf, length); });
 }
