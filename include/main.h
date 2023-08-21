@@ -5,6 +5,7 @@
 #include "wireless.h"
 #include "socket.h"
 #include "ota.h"
+#include "ntp-time.h"
 
 #define USE_WS 1
 
