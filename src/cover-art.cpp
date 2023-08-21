@@ -27,7 +27,7 @@ byte CoverArt::handleMessage(byte *buffer, int length)
             return 1;
         return handleFillScreen(buffer[1], buffer[2], buffer[3]);
     case 2:
-        if (length < 7)
+        if (length < 6)
             return 1;
         return handleDrawPixel(buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
     case 3:
@@ -50,9 +50,20 @@ byte CoverArt::handleMessage(byte *buffer, int length)
         if (length < 2)
             return 1;
         return handleSetBrightness(buffer[1]);
+    case 9:
+        if (length < 8)
+            return 1;
+        return handleDrawLine(buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7]);
     default:
         return 1;
     }
+}
+
+byte CoverArt::handleDrawLine(byte x0, byte y0, byte x1, byte y1, byte r, byte g, byte b)
+{
+
+    matrix->getVirtDisplay()->drawLine(x0, y0, x1, y1, matrix->getVirtDisplay()->color444(r, g, b));
+    return 0;
 }
 
 byte CoverArt::handleFillScreen(byte r, byte g, byte b)

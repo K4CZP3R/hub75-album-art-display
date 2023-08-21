@@ -20,6 +20,7 @@ private:
     byte handleFeedBitmap(byte *buffer, int length);
     byte handleDrawBitmap(byte x, byte y);
     byte handleSetBrightness(byte brightness);
+    byte handleDrawLine(byte x0, byte y0, byte x1, byte y1, byte r, byte g, byte b);
     Matrix *matrix = NULL;
     uint16_t *rgbBitmap = NULL;
     int rgbBitmapIdx = 0;
