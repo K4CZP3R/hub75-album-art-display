@@ -4,6 +4,7 @@
 #include "serial-recv.h"
 #include "wireless.h"
 #include "socket.h"
+#include "ota.h"
 
 #define USE_WS 1
 
